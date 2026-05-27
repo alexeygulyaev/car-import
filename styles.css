@@ -53,7 +53,9 @@ input, select {
 }
 input:focus, select:focus { border-color: var(--accent); }
 .row2 { display: flex; gap: 10px; }
-.row2 > * { flex: 1; }
+.row2 > * { flex: 1; min-width: 0; }
+/* на узких экранах стоимость и валюта в столбик — иначе длинное число обрезается */
+@media (max-width: 560px) { .row2 { flex-direction: column; gap: 8px; } }
 .check { display: flex; align-items: center; gap: 9px; margin: 4px 0 13px; }
 .check input { width: auto; }
 .check label { margin: 0; color: var(--text); font-size: 14px; }
