@@ -67,7 +67,9 @@ input:focus, select:focus { border-color: var(--accent); }
   border: 1px solid var(--line); color: var(--muted); font-size: 10px; font-weight: 700;
   cursor: help; position: relative; vertical-align: middle; outline: none;
 }
-.hint:hover, .hint:focus { border-color: var(--accent); color: var(--accent); }
+/* :focus-visible, не :focus — чтобы тап на мобильных не оставлял «залипшую» подсветку */
+.hint:hover, .hint:focus-visible { border-color: var(--accent); color: var(--accent); }
+.hint.open { border-color: var(--accent); color: var(--accent); }
 
 /* ссылка-справка рядом с названием поля */
 .reflink { margin-left: 8px; font-size: 12px; font-weight: 400; color: var(--accent); text-decoration: none; }

@@ -66,6 +66,10 @@ const tip = document.createElement('div');
 tip.id = 'tooltip';
 document.body.appendChild(tip);
 
+let activeHint = null;
+// устройства с мышью показывают тултип по наведению; на тач-экранах — по тапу
+const canHover = window.matchMedia('(hover: hover)').matches;
+
 function showTip(el) {
   tip.textContent = el.dataset.tip || '';
   if (!tip.textContent) return;
@@ -82,11 +86,34 @@ function showTip(el) {
   tip.style.top = top + 'px';
   tip.classList.add('show');
 }
-function hideTip() { tip.classList.remove('show'); }
+function hideTip() {
+  tip.classList.remove('show');
+  if (activeHint) { activeHint.classList.remove('open'); activeHint = null; }
+}
+
+function openTip(el) { showTip(el); el.classList.add('open'); activeHint = el; }
 
 document.querySelectorAll('.hint').forEach(el => {
-  el.addEventListener('pointerenter', () => showTip(el));
-  el.addEventListener('pointerleave', hideTip);
-  el.addEventListener('focus', () => showTip(el));
-  el.addEventListener('blur', hideTip);
+  if (canHover) {
+    // мышь: наведение + фокус с клавиатуры
+    el.addEventListener('pointerenter', () => openTip(el));
+    el.addEventListener('pointerleave', hideTip);
+    el.addEventListener('focus', () => openTip(el));
+    el.addEventListener('blur', hideTip);
+  } else {
+    // тач: тап переключает подсказку (повторный тап или тап вне — скрывает)
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (activeHint === el) hideTip();
+      else openTip(el);
+    });
+  }
 });
+
+// единый способ закрыть подсказку на мобильных: тап вне иконки, прокрутка, поворот, Esc
+document.addEventListener('pointerdown', (e) => {
+  if (activeHint && !(e.target.closest && e.target.closest('.hint'))) hideTip();
+});
+window.addEventListener('scroll', hideTip, true);
+window.addEventListener('resize', hideTip);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideTip(); });
