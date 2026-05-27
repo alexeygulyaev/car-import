@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор импорта авто из Японии (физлицо)</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>🚗 Импорт авто из Японии → Россия</h1>
+  <div class="sub">Физлицо, для личного пользования · схема СТП (единая совокупная ставка) · ставки 2026</div>
+
+  <!-- Курс ¥ для SWIFT (оплата авто). Спред задаётся в коде — константа SWIFT_SPREAD_PCT в rates.js -->
+  <div class="rates">
+    <b>Курс ¥ (SWIFT)</b><span class="hint" tabindex="0" data-tip="Курс покупки иены для SWIFT-перевода: рыночный курс (онлайн). Можно вписать точный курс вручную, сверив с @impexpaybot.">?</span>
+    <span>(оплата авто):</span>
+    <span class="stepper sm">
+      <button class="dec" type="button">−</button>
+      <input id="rJpyAtb" type="number" step="0.0001" data-step="0.01">
+      <button class="inc" type="button">+</button>
+    </span>
+    <span>₽</span>
+    <a href="https://t.me/impexpaybot" target="_blank" rel="noopener">@impexpaybot →</a>
+    <a href="https://www.atb.su/services/exchange/" target="_blank" rel="noopener">atb.su →</a>
+  </div>
+
+  <!-- Курс ЦБ (пошлина/сбор/фрахт) -->
+  <div class="rates">
+    <b>Курс ЦБ</b><span class="hint" tabindex="0" data-tip="Официальный курс ЦБ РФ. По нему таможня считает пошлину и сбор, а также пересчитывается фрахт. Подгружается автоматически.">?</span>
+    <span>(пошлина, сбор, фрахт):</span>
+    <label>€</label>
+    <span class="stepper sm">
+      <button class="dec" type="button">−</button>
+      <input id="rEur" type="number" step="0.01" data-step="0.1">
+      <button class="inc" type="button">+</button>
+    </span>
+    <label>$</label>
+    <span class="stepper sm">
+      <button class="dec" type="button">−</button>
+      <input id="rUsd" type="number" step="0.01" data-step="0.1">
+      <button class="inc" type="button">+</button>
+    </span>
+    <button id="refresh" class="btn" type="button">⟳ обновить</button>
+    <span class="rate-status" id="rateStatus">загрузка…</span>
+  </div>
+
+  <div class="grid">
+    <!-- Параметры авто -->
+    <div class="card">
+      <h2>Параметры авто</h2>
+      <div class="field">
+        <label>Стоимость авто (цена на аукционе)<span class="hint" tabindex="0" data-tip="Цена лота на аукционе — без японских сборов и комиссий (их укажите отдельным полем ниже). От неё считается таможенная стоимость и пошлина.">?</span><a class="reflink" href="https://aleado.ru/autostat/" target="_blank" rel="noopener">средние цены ↗</a></label>
+        <div class="row2">
+          <span class="stepper">
+            <button class="dec" type="button">−</button>
+            <input id="price" class="num" type="text" inputmode="numeric" value="1500000" min="0" data-step="50000">
+            <button class="inc" type="button">+</button>
+          </span>
+          <select id="curr">
+            <option value="jpy" selected>¥ иена (ATB)</option>
+            <option value="usd">$ доллар (ЦБ)</option>
+            <option value="eur">€ евро (ЦБ)</option>
+            <option value="rub">₽ рубль</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Расходы по Японии (комиссия японской стороны), <span id="curSym">¥</span><span class="hint" tabindex="0" data-tip="Сборы японской стороны: аукционный сбор, услуги агента в Японии, внутренняя доставка до порта, экспортное оформление. В той же валюте, что и стоимость авто.">?</span></label>
+        <span class="stepper">
+          <button class="dec" type="button">−</button>
+          <input id="japanFee" class="num" type="text" inputmode="numeric" value="150000" min="0" data-step="10000">
+          <button class="inc" type="button">+</button>
+        </span>
+      </div>
+      <div class="field">
+        <label>Объём двигателя, см³<span class="hint" tabindex="0" data-tip="Рабочий объём двигателя в кубических сантиметрах. 1.8 литра = 1800 см³. От него напрямую считается размер таможенной пошлины.">?</span></label>
+        <span class="stepper">
+          <button class="dec" type="button">−</button>
+          <input id="cc" class="num" type="text" inputmode="numeric" value="1500" min="0" data-step="100">
+          <button class="inc" type="button">+</button>
+        </span>
+      </div>
+      <div class="field">
+        <label>Возраст авто<span class="hint" tabindex="0" data-tip="Сколько лет прошло с даты выпуска до растаможки (считается по месяцу выпуска). Самый выгодный по пошлине диапазон — от 3 до 5 лет.">?</span></label>
+        <select id="age">
+          <option value="lt3">До 3 лет</option>
+          <option value="3to5" selected>От 3 до 5 лет</option>
+          <option value="gt5">Старше 5 лет</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Мощность, л.с.<span class="hint" tabindex="0" data-tip="Мощность в лошадиных силах. Влияет на утильсбор: при мощности свыше 160 л.с. льгота для физлиц снимается и сбор резко возрастает — до сотен тысяч / миллионов ₽.">?</span></label>
+        <span class="stepper">
+          <button class="dec" type="button">−</button>
+          <input id="hp" class="num" type="text" inputmode="numeric" value="150" min="0" data-step="5">
+          <button class="inc" type="button">+</button>
+        </span>
+      </div>
+      <div class="check">
+        <input id="electric" type="checkbox">
+        <label for="electric">Электромобиль</label>
+        <span class="hint" tabindex="0" data-tip="Авто без ДВС. Для электромобилей пошлина считается иначе — 15% от стоимости вместо ставки за см³.">?</span>
+      </div>
+    </div>
+
+    <!-- Доп. расходы -->
+    <div class="card">
+      <h2>Дополнительные расходы</h2>
+      <div class="field">
+        <label>Фрахт (морем до Владивостока), $<span class="hint" tabindex="0" data-tip="Морская доставка из японского порта во Владивосток. Указывается в долларах, пересчитывается по курсу ЦБ.">?</span></label>
+        <span class="stepper">
+          <button class="dec" type="button">−</button>
+          <input id="freight" class="num" type="text" inputmode="numeric" value="350" min="0" data-step="50">
+          <button class="inc" type="button">+</button>
+        </span>
+      </div>
+      <div class="field">
+        <label>Доставка по РФ<span class="hint" tabindex="0" data-tip="Доставка из Владивостока до вашего города автовозом или по ж/д. Сибирь ≈ 80–150 тыс.; Москва и центр ≈ 150–300+ тыс. ₽.">?</span></label>
+        <span class="stepper">
+          <button class="dec" type="button">−</button>
+          <input id="delivery" class="num" type="text" inputmode="numeric" value="0" min="0" data-step="5000">
+          <button class="inc" type="button">+</button>
+        </span>
+      </div>
+      <div class="field">
+        <label>Услуги таможенного брокера<span class="hint" tabindex="0" data-tip="Оплата таможенному представителю или компании-помощнику за оформление и сопровождение сделки.">?</span></label>
+        <span class="stepper">
+          <button class="dec" type="button">−</button>
+          <input id="broker" class="num" type="text" inputmode="numeric" value="70_000" min="0" data-step="5000">
+          <button class="inc" type="button">+</button>
+        </span>
+      </div>
+      <div class="field">
+        <label>СБКТС<span class="hint" tabindex="0" data-tip="Свидетельство о безопасности конструкции транспортного средства — обязательная экспертиза, без неё авто не поставить на учёт в ГИБДД.">?</span></label>
+        <span class="stepper">
+          <button class="dec" type="button">−</button>
+          <input id="sbkts" class="num" type="text" inputmode="numeric" value="15000" min="0" data-step="1000">
+          <button class="inc" type="button">+</button>
+        </span>
+      </div>
+      <div class="field">
+        <label>ЭРА-ГЛОНАСС (физлицам пока не нужно)<span class="hint" tabindex="0" data-tip="Для физлиц, ввозящих авто для личного пользования, установка сейчас НЕ требуется — мораторий действует (досрочную отмену с 01.04.2026 отложили)">?</span></label>
+        <span class="stepper">
+          <button class="dec" type="button">−</button>
+          <input id="glonass" class="num" type="text" inputmode="numeric" value="0" min="0" data-step="1000">
+          <button class="inc" type="button">+</button>
+        </span>
+      </div>
+      <div class="field">
+        <label>ЭПТС (электронный ПТС)<span class="hint" tabindex="0" data-tip="Электронный паспорт транспортного средства — оформляется вместо бумажного ПТС на основании СБКТС. Для физлиц сейчас без обязательной установки ЭРА-ГЛОНАСС.">?</span></label>
+        <span class="stepper">
+          <button class="dec" type="button">−</button>
+          <input id="epts" class="num" type="text" inputmode="numeric" value="4000" min="0" data-step="500">
+          <button class="inc" type="button">+</button>
+        </span>
+      </div>
+      <div class="field">
+        <label>СВХ / погрузка / прочее<span class="hint" tabindex="0" data-tip="Склад временного хранения, погрузо-разгрузочные работы, стоянка в порту и прочие мелкие портовые расходы.">?</span></label>
+        <span class="stepper">
+          <button class="dec" type="button">−</button>
+          <input id="other" class="num" type="text" inputmode="numeric" value="0" min="0" data-step="1000">
+          <button class="inc" type="button">+</button>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div id="warnings"></div>
+
+  <!-- Результат -->
+  <div class="result">
+    <div class="lines" id="lines"></div>
+    <div class="summary" id="summary"></div>
+  </div>
+
+  <div class="disclaimer">
+    <b>Важно:</b> расчёт оценочный, ставки проверены по ФТС на 2026 г., но периодически меняются — перед сделкой сверяйтесь с брокером.
+    Курс <b>ATB</b> применяется к оплате авто (вы платите иенами через SWIFT); пошлину и сбор таможня считает по курсу <b>ЦБ</b> на день декларации.
+    Льготный утильсбор (3 400 / 5 200 ₽) — только для личного пользования и мощности <b>до 160 л.с.</b>;
+    свыше 160 л.с. льгота снята и сбор вырастает до сотен тысяч / миллионов ₽.
+    Япония запрещает экспорт в РФ авто с двигателем <b>больше 1,9 л</b>, а также электромобилей и большинства гибридов.
+    <b>ЭРА-ГЛОНАСС</b> для физлиц (личное пользование) сейчас не требуется — мораторий действует, досрочную отмену с 01.04.2026 отложили.
+  </div>
+</div>
+
+<!-- порядок важен: ставки → курсы → виджеты → сборка -->
+<script src="tariffs.js"></script>
+<script src="rates.js"></script>
+<script src="ui.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
